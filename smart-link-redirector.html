@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Link Redirector</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            background-color: white;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            border-left: 4px solid #4CAF50;
+        }
+        .code-box {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        .copy-btn {
+            background-color: #555;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Smart Link Redirector Generator</h1>
+    <p>Create smart links that redirect to the appropriate destination based on the user's device and whether they have an app installed.</p>
+    
+    <div class="form-group">
+        <label for="productUrl">Product URL:</label>
+        <input type="text" id="productUrl" placeholder="https://www.amazon.com/product/..." />
+    </div>
+    
+    <div class="form-group">
+        <label for="retailer">Retailer:</label>
+        <select id="retailer">
+            <option value="amazon">Amazon</option>
+            <option value="walmart">Walmart</option>
+            <option value="target">Target</option>
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label for="affiliateTag">Affiliate Tag (optional):</label>
+        <input type="text" id="affiliateTag" placeholder="e.g., tdgytch-20" />
+    </div>
+    
+    <button onclick="generateSmartLink()">Generate Smart Link</button>
+    
+    <div id="result" class="result" style="display:none;">
+        <h3>Your Smart Link:</h3>
+        <p id="smartLinkResult"></p>
+        <button id="copyLinkBtn" class="copy-btn" onclick="copyToClipboard('smartLinkResult')">Copy Link</button>
+        
+        <h3>HTML Code:</h3>
+        <div class="code-box" id="htmlCode"></div>
+        <button class="copy-btn" onclick="copyToClipboard('htmlCode')">Copy HTML</button>
+        
+        <h3>JavaScript Implementation Code:</h3>
+        <div class="code-box" id="jsCode"></div>
+        <button class="copy-btn" onclick="copyToClipboard('jsCode')">Copy JavaScript</button>
+    </div>
+    
+    <script>
+        // Store app information
+        const retailers = {
+            amazon: {
+                appScheme: 'com.amazon.mobile.shopping.web://',
+                androidAppPackage: 'com.amazon.mShop.android.shopping',
+                iosAppId: '297606951',
+                webUrl: 'https://www.amazon.com',
+                androidAppUrl: 'https://play.google.com/store/apps/details?id=com.amazon.mShop.android.shopping',
+                iosAppUrl: 'https://apps.apple.com/us/app/amazon-app-shop-browse-scan/id297606951'
+            },
+            walmart: {
+                appScheme: 'walmart://',
+                androidAppPackage: 'com.walmart.android',
+                iosAppId: '338137227',
+                webUrl: 'https://www.walmart.com',
+                androidAppUrl: 'https://play.google.com/store/apps/details?id=com.walmart.android',
+                iosAppUrl: 'https://apps.apple.com/us/app/walmart-shopping-grocery/id338137227'
+            },
+            target: {
+                appScheme: 'target://',
+                androidAppPackage: 'com.target.ui',
+                iosAppId: '297430070',
+                webUrl: 'https://www.target.com',
+                androidAppUrl: 'https://play.google.com/store/apps/details?id=com.target.ui',
+                iosAppUrl: 'https://apps.apple.com/us/app/target/id297430070'
+            }
+        };
+
+        function generateSmartLink() {
+            const productUrl = document.getElementById('productUrl').value.trim();
+            const retailer = document.getElementById('retailer').value;
+            const affiliateTag = document.getElementById('affiliateTag').value.trim();
+            
+            if (!productUrl) {
+                alert('Please enter a product URL');
+                return;
+            }
+            
+            // Extract the path from the URL
+            let path = '';
+            try {
+                const url = new URL(productUrl);
+                path = url.pathname + url.search;
+                
+                // Add affiliate tag if provided and not already in the URL
+                if (affiliateTag && !url.search.includes('tag=')) {
+                    path += url.search ? '&tag=' + affiliateTag : '?tag=' + affiliateTag;
+                }
+            } catch (e) {
+                alert('Please enter a valid URL');
+                return;
+            }
+            
+            // Create a unique identifier for the link
+            const linkId = Math.random().toString(36).substring(2, 8).toUpperCase();
+            
+            // Create the base URL for the smart link service
+            const baseUrl = window.location.origin + window.location.pathname;
+            const smartLinkUrl = baseUrl + 'redirect.html?id=' + linkId + '&retailer=' + retailer + '&path=' + encodeURIComponent(path);
+            
+            document.getElementById('smartLinkResult').textContent = smartLinkUrl;
+            
+            // Generate HTML code
+            const htmlCode = `<!-- Smart Link for ${retailers[retailer].webUrl + path} -->
+<a href="${smartLinkUrl}">View Product</a>`;
+            document.getElementById('htmlCode').textContent = htmlCode;
+            
+            // Generate JavaScript implementation code
+            const jsCode = `// Smart Link Redirect Implementation
+// Save this as redirect.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redirecting...</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 30px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h2>Redirecting you to the right destination...</h2>
+    <div class="loader"></div>
+    <p id="message">Please wait...</p>
+
+    <script>
+        const retailers = ${JSON.stringify(retailers, null, 4)};
+        
+        function getParameterByName(name) {
+            const url = window.location.href;
+            name = name.replace(/[\\[\\]]/g, '\\\\$&');
+            const regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)');
+            const results = regex.exec(url);
+            if (!results) return null;
+            if (!results[2]) return '';
+            return decodeURIComponent(results[2].replace(/\\+/g, ' '));
+        }
+        
+        function detectDevice() {
+            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+            
+            // Check if mobile
+            const isMobile = /android|iphone|ipad|ipod|blackberry|windows phone/i.test(userAgent);
+            
+            // Device type
+            let deviceType = 'desktop';
+            
+            if (isMobile) {
+                if (/android/i.test(userAgent)) {
+                    deviceType = /mobile/i.test(userAgent) ? 'androidPhone' : 'androidTablet';
+                } else if (/iphone|ipod/i.test(userAgent)) {
+                    deviceType = 'iPhone';
+                } else if (/ipad/i.test(userAgent)) {
+                    deviceType = 'iPad';
+                }
+            }
+            
+            return deviceType;
+        }
+        
+        function redirect() {
+            const retailerName = getParameterByName('retailer');
+            const path = getParameterByName('path');
+            
+            if (!retailerName || !path || !retailers[retailerName]) {
+                document.getElementById('message').textContent = 'Invalid parameters. Redirecting to homepage...';
+                setTimeout(() => { window.location.href = '/'; }, 2000);
+                return;
+            }
+            
+            const retailer = retailers[retailerName];
+            const deviceType = detectDevice();
+            
+            // Build the URLs
+            const webUrl = retailer.webUrl + path;
+            let appUrl = '';
+            let appStoreUrl = '';
+            
+            if (deviceType === 'androidPhone' || deviceType === 'androidTablet') {
+                appUrl = retailer.appScheme + retailer.webUrl.replace('https://', '') + path;
+                appStoreUrl = retailer.androidAppUrl;
+            } else if (deviceType === 'iPhone' || deviceType === 'iPad') {
+                appUrl = retailer.appScheme + retailer.webUrl.replace('https://', '') + path;
+                appStoreUrl = retailer.iosAppUrl;
+            }
+            
+            // If not mobile or no app routing available, send directly to web
+            if (deviceType === 'desktop' || !appUrl) {
+                window.location.href = webUrl;
+                return;
+            }
+            
+            // Try to open the app first, then fallback to web
+            const appOpenTimeout = setTimeout(() => {
+                document.getElementById('message').textContent = 'Opening website...';
+                window.location.href = webUrl;
+            }, 2500);
+            
+            // Attempt to open the app
+            document.getElementById('message').textContent = 'Opening app...';
+            
+            // Create an iframe to try opening the app
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = appUrl;
+            document.body.appendChild(iframe);
+            
+            // Add a button to open app store
+            setTimeout(() => {
+                const appStoreBtn = document.createElement('button');
+                appStoreBtn.textContent = 'Get the App';
+                appStoreBtn.style.padding = '10px 20px';
+                appStoreBtn.style.backgroundColor = '#4CAF50';
+                appStoreBtn.style.color = 'white';
+                appStoreBtn.style.border = 'none';
+                appStoreBtn.style.borderRadius = '4px';
+                appStoreBtn.style.cursor = 'pointer';
+                appStoreBtn.style.fontSize = '16px';
+                appStoreBtn.style.marginTop = '20px';
+                appStoreBtn.onclick = function() {
+                    clearTimeout(appOpenTimeout);
+                    window.location.href = appStoreUrl;
+                };
+                document.body.appendChild(appStoreBtn);
+            }, 1500);
+        }
+        
+        // Start the redirect process when page loads
+        window.onload = redirect;
+    </script>
+</body>
+</html>`;
+            document.getElementById('jsCode').textContent = jsCode;
+            
+            document.getElementById('result').style.display = 'block';
+        }
+        
+        function copyToClipboard(elementId) {
+            const text = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const button = event.target;
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Error copying text: ', err);
+            });
+        }
+    </script>
+</body>
+</html>

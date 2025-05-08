@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redirecting...</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            text-align: center;
+            padding: 20px;
+            color: #333;
+            background-color: #f9f9f9;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            max-width: 500px;
+            padding: 30px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #4CAF50;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 30px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .btn {
+            padding: 12px 24px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+            display: none;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        .store-icon {
+            width: 24px;
+            height: 24px;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Redirecting you to the right destination</h2>
+        <div class="loader" id="loader"></div>
+        <p id="message">Please wait...</p>
+        <button id="appStoreBtn" class="btn">Get the App</button>
+        <button id="webBtn" class="btn">Continue to Website</button>
+    </div>
+
+    <script>
+        // Retailer configuration
+        const retailers = {
+            amazon: {
+                appScheme: 'com.amazon.mobile.shopping.web://',
+                webUrl: 'https://www.amazon.com',
+                androidAppUrl: 'https://play.google.com/store/apps/details?id=com.amazon.mShop.android.shopping',
+                iosAppUrl: 'https://apps.apple.com/us/app/amazon-app-shop-browse-scan/id297606951'
+            },
+            walmart: {
+                appScheme: 'walmart://',
+                webUrl: 'https://www.walmart.com',
+                androidAppUrl: 'https://play.google.com/store/apps/details?id=com.walmart.android',
+                iosAppUrl: 'https://apps.apple.com/us/app/walmart-shopping-grocery/id338137227'
+            },
+            target: {
+                appScheme: 'target://',
+                webUrl: 'https://www.target.com',
+                androidAppUrl: 'https://play.google.com/store/apps/details?id=com.target.ui',
+                iosAppUrl: 'https://apps.apple.com/us/app/target/id297430070'
+            }
+        };
+        
+        // Get URL parameters
+        function getParameterByName(name) {
+            const url = window.location.href;
+            name = name.replace(/[[\]]/g, '\\$&');
+            const regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)');
+            const results = regex.exec(url);
+            if (!results) return null;
+            if (!results[2]) return '';
+            return decodeURIComponent(results[2].replace(/\+/g, ' '));
+        }
+        
+        // Detect device type
+        function detectDevice() {
+            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+            
+            // Check if mobile
+            const isMobile = /android|iphone|ipad|ipod|blackberry|windows phone/i.test(userAgent);
+            
+            // Device type
+            let deviceType = 'desktop';
+            
+            if (isMobile) {
+                if (/android/i.test(userAgent)) {
+                    deviceType = /mobile/i.test(userAgent) ? 'androidPhone' : 'androidTablet';
+                } else if (/iphone|ipod/i.test(userAgent)) {
+                    deviceType = 'iPhone';
+                } else if (/ipad/i.test(userAgent)) {
+                    deviceType = 'iPad';
+                }
+            }
+            
+            return deviceType;
+        }
+        
+        // Main redirect function
+        function redirect() {
+            const retailerName = getParameterByName('retailer');
+            const path = getParameterByName('path');
+            
+            if (!retailerName || !path || !retailers[retailerName]) {
+                document.getElementById('message').textContent = 'Invalid parameters. Redirecting to homepage...';
+                setTimeout(() => { window.location.href = '/'; }, 2000);
+                return;
+            }
+            
+            const retailer = retailers[retailerName];
+            const deviceType = detectDevice();
+            
+            // Build the URLs
+            const webUrl = retailer.webUrl + path;
+            let appUrl = '';
+            let appStoreUrl = '';
+            
+            if (deviceType === 'androidPhone' || deviceType === 'androidTablet') {
+                appUrl = retailer.appScheme + retailer.webUrl.replace('https://', '') + path;
+                appStoreUrl = retailer.androidAppUrl;
+            } else if (deviceType === 'iPhone' || deviceType === 'iPad') {
+                appUrl = retailer.appScheme + retailer.webUrl.replace('https://', '') + path;
+                appStoreUrl = retailer.iosAppUrl;
+            }
+            
+            // If not mobile or no app routing available, send directly to web
+            if (deviceType === 'desktop' || !appUrl) {
+                window.location.href = webUrl;
+                return;
+            }
+            
+            // Try to open the app first, then fallback to web
+            const appOpenTimeout = setTimeout(() => {
+                document.getElementById('message').textContent = 'Opening website...';
+                window.location.href = webUrl;
+            }, 2500);
+            
+            // Attempt to open the app
+            document.getElementById('message').textContent = 'Opening app...';
+            
+            // Create an iframe to try opening the app
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = appUrl;
+            document.body.appendChild(iframe);
+            
+            // Show buttons after a delay
+            setTimeout(() => {
+                // Hide loader
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('message').textContent = 'Choose your destination:';
+                
+                // Show App Store button
+                const appStoreBtn = document.getElementById('appStoreBtn');
+                appStoreBtn.style.display = 'inline-block';
+                appStoreBtn.onclick = function() {
+                    clearTimeout(appOpenTimeout);
+                    window.location.href = appStoreUrl;
+                };
+                
+                // Show Web button
+                const webBtn = document.getElementById('webBtn');
+                webBtn.style.display = 'inline-block';
+                webBtn.onclick = function() {
+                    clearTimeout(appOpenTimeout);
+                    window.location.href = webUrl;
+                };
+            }, 1500);
+        }
+        
+        // Start the redirect process when page loads
+        window.onload = redirect;
+    </script>
+</body>
+</html>
